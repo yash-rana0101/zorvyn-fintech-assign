@@ -80,18 +80,29 @@ Notes:
 
 ## Key Features
 
-| Feature                   | Implementation                                                                            |
-| ------------------------- | ----------------------------------------------------------------------------------------- |
-| JWT Authentication        | Stateless JWT tokens via `jsonwebtoken` with configurable `JWT_EXPIRES_IN`                |
-| Role-Based Access Control | Three-tier RBAC (`viewer`, `analyst`, `admin`) enforced with route middleware             |
-| ACID-Compliant Financials | PostgreSQL `NUMERIC(15,2)` amounts with decimal-string handling in service layer          |
-| DB-Level Aggregations     | `SUM` and `GROUP BY` performed in PostgreSQL for analytics endpoints                      |
-| Redis Cache-Aside         | Analytics endpoints cached in Redis for 1 hour; invalidated by finance write events       |
-| Soft Deletes              | Transaction delete uses `deleted_at` timestamp; records remain auditable                  |
-| Zod Validation            | Zod schemas on auth/user/finance/analytics inbound payloads                               |
-| Global Error Handling     | Centralized middleware with Zod and Prisma-aware formatting; no stack leaks in production |
-| Idempotent Seeding        | Upsert-based seed script (`npm run seed`) safe for repeated execution                     |
-| Dockerized Stack          | Multi-stage `Dockerfile` + `docker-compose.yml` for API + Postgres + Redis                |
+| Feature                   | Implementation                                                                             |
+| ------------------------- | ------------------------------------------------------------------------------------------ |
+| JWT Authentication        | Stateless JWT tokens via `jsonwebtoken` with configurable `JWT_EXPIRES_IN`                 |
+| Role-Based Access Control | Three-tier RBAC (`viewer`, `analyst`, `admin`) enforced with route middleware              |
+| ACID-Compliant Financials | PostgreSQL `NUMERIC(15,2)` amounts with decimal-string handling in service layer           |
+| DB-Level Aggregations     | `SUM` and `GROUP BY` performed in PostgreSQL for analytics endpoints                       |
+| Redis Cache-Aside         | Analytics endpoints cached in Redis for 1 hour; invalidated by finance write events        |
+| Soft Deletes              | Transaction delete uses `deleted_at` timestamp; records remain auditable                   |
+| Zod Validation            | Zod schemas on auth/user/finance/analytics inbound payloads                                |
+| Global Error Handling     | Centralized middleware with Zod and Prisma-aware formatting; no stack leaks in production  |
+| Idempotent Seeding        | Upsert-based seed script (`npm run seed`) safe for repeated execution                      |
+| Dockerized Stack          | Multi-stage `Dockerfile` + `docker-compose.yml` for API + Postgres + Redis                 |
+| API Security Hardening    | Helmet headers, CORS allowlist, payload size limits, rate limits, optional HTTPS-only mode |
+
+## Security Configuration
+
+- CORS allowlist: `CORS_ALLOWED_ORIGINS` (comma-separated, `*` to allow all)
+- Request body size limit: `API_BODY_LIMIT` (example: `100kb`, `1mb`)
+- Reverse proxy trust toggle: `TRUST_PROXY`
+- HTTPS-only enforcement toggle: `ENFORCE_HTTPS`
+- Global rate limit window/max: `RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX`
+- Auth endpoint rate limit max: `AUTH_RATE_LIMIT_MAX`
+- Login endpoint rate limit max: `LOGIN_RATE_LIMIT_MAX`
 
 ## Caching
 
