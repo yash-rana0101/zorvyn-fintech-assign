@@ -6,8 +6,11 @@ import userRoutes from './modules/user/routes';
 import financeRoutes from './modules/finance/routes';
 import analyticsRoutes from './modules/analytics/routes';
 import { errorHandler } from './middleware/errorHandler';
+import { initializeAnalyticsCacheInvalidation } from './modules/analytics/invalidation';
 
 const app = express();
+
+initializeAnalyticsCacheInvalidation();
 
 app.use(helmet());
 app.use(cors());

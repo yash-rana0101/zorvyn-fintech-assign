@@ -12,9 +12,11 @@ export type TransactionRow = {
   idempotency_key: string | null;
   created_at: string;
   updated_at: string;
+  deleted_at: string | null;
 };
 
-const COLUMNS = 'id, user_id, amount, type, category, note, timestamp, idempotency_key, created_at, updated_at';
+const COLUMNS =
+  'id, user_id, amount, type, category, note, timestamp, idempotency_key, created_at, updated_at, deleted_at';
 
 function executor(client?: PoolClient) {
   if (client) {
@@ -26,7 +28,7 @@ function executor(client?: PoolClient) {
 
 export async function findById(id: string): Promise<TransactionRow | null> {
   const result = await query<TransactionRow>(
-    `SELECT ${COLUMNS} FROM transactions WHERE id = $1 LIMIT 1`,
+    `SELECT ${COLUMNS} FROM transactions WHERE id = $1 AND deleted_at IS NULL LIMIT 1`,
     [id]
   );
   return result.rows[0] ?? null;
@@ -35,7 +37,11 @@ export async function findById(id: string): Promise<TransactionRow | null> {
 export async function findByIdempotencyKey(key: string, client?: PoolClient): Promise<TransactionRow | null> {
   const runQuery = executor(client);
   const result = await runQuery<TransactionRow>(
-    `SELECT ${COLUMNS} FROM transactions WHERE idempotency_key = $1 LIMIT 1`,
+    `SELECT ${COLUMNS}
+     FROM transactions
+     WHERE idempotency_key = $1
+       AND deleted_at IS NULL
+     LIMIT 1`,
     [key]
   );
   return result.rows[0] ?? null;
@@ -44,7 +50,7 @@ export async function findByIdempotencyKey(key: string, client?: PoolClient): Pr
 export async function createWithIdempotency(
   input: {
     user_id: string;
-    amount: number;
+    amount: string;
     type: 'income' | 'expense';
     category: string;
     note: string | null;
@@ -85,7 +91,7 @@ function buildWhereClause(filters: {
   start_date?: Date;
   end_date?: Date;
 }) {
-  const clauses: string[] = [];
+  const clauses: string[] = ['deleted_at IS NULL'];
   const values: unknown[] = [];
   let index = 1;
 
@@ -115,7 +121,7 @@ function buildWhereClause(filters: {
   }
 
   return {
-    where: clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : '',
+    where: `WHERE ${clauses.join(' AND ')}`,
     values,
     nextIndex: index,
   };
@@ -164,7 +170,7 @@ export async function count(filters: {
 export async function update(
   id: string,
   updates: Partial<{
-    amount: number;
+    amount: string;
     type: 'income' | 'expense';
     category: string;
     note: string | null;
@@ -183,7 +189,7 @@ export async function update(
   const result = await query<TransactionRow>(
     `UPDATE transactions
      SET ${setClause}, updated_at = NOW()
-     WHERE id = $${values.length}
+     WHERE id = $${values.length} AND deleted_at IS NULL
      RETURNING ${COLUMNS}`,
     values
   );
@@ -193,7 +199,10 @@ export async function update(
 
 export async function deleteById(id: string): Promise<TransactionRow | null> {
   const result = await query<TransactionRow>(
-    `DELETE FROM transactions WHERE id = $1 RETURNING ${COLUMNS}`,
+    `UPDATE transactions
+     SET deleted_at = NOW(), updated_at = NOW()
+     WHERE id = $1 AND deleted_at IS NULL
+     RETURNING ${COLUMNS}`,
     [id]
   );
 

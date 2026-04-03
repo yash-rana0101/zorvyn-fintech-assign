@@ -10,18 +10,18 @@ type Actor = {
 };
 
 type SummaryResponse = {
-  total_income: number;
-  total_expense: number;
-  net_balance: number;
+  total_income: string;
+  total_expense: string;
+  net_balance: string;
 };
 
 type TrendResponse = {
   month: string;
-  income: number;
-  expense: number;
+  income: string;
+  expense: string;
 };
 
-const ANALYTICS_CACHE_TTL_SECONDS = 30;
+const ANALYTICS_CACHE_TTL_SECONDS = 60 * 60;
 const ANALYTICS_VERSION_TTL_SECONDS = 60 * 60;
 
 const querySchema = z.object({
@@ -83,9 +83,9 @@ export async function getSummary(actor: Actor, queryInput: unknown) {
   const summary = await analyticsRepository.getSummary(targetUserId);
 
   const response: SummaryResponse = {
-    total_income: Number(summary.total_income),
-    total_expense: Number(summary.total_expense),
-    net_balance: Number(summary.net_balance),
+    total_income: summary.total_income,
+    total_expense: summary.total_expense,
+    net_balance: summary.net_balance,
   };
 
   await setJSONCache(cacheKey, response, ANALYTICS_CACHE_TTL_SECONDS);
@@ -108,8 +108,8 @@ export async function getTrends(actor: Actor, queryInput: unknown) {
 
   const response: TrendResponse[] = rows.map((row) => ({
     month: row.month_key,
-    income: Number(row.income),
-    expense: Number(row.expense),
+    income: row.income,
+    expense: row.expense,
   }));
 
   await setJSONCache(cacheKey, response, ANALYTICS_CACHE_TTL_SECONDS);

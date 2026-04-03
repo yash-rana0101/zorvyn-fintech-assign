@@ -43,6 +43,8 @@ const listSchema = z.object({
   limit: z.coerce.number().int().min(1).max(MAX_LIMIT).default(DEFAULT_LIMIT),
 });
 
+const userIdSchema = z.string().uuid('user id must be a valid UUID');
+
 function ensureSelfOrAdmin(actor: Actor, targetUserId: string): void {
   if (actor.role !== 'admin' && actor.user_id !== targetUserId) {
     throw new AppError('Forbidden', 403);
@@ -110,15 +112,16 @@ export async function createUser(input: unknown) {
 }
 
 export async function getUserById(userId: string, actor: Actor) {
-  ensureSelfOrAdmin(actor, userId);
+  const targetUserId = userIdSchema.parse(userId);
+  ensureSelfOrAdmin(actor, targetUserId);
 
-  const cacheKey = userByIdCacheKey(userId);
+  const cacheKey = userByIdCacheKey(targetUserId);
   const cached = await getJSONCache<Omit<userRepository.UserRow, 'password_hash'>>(cacheKey);
   if (cached) {
     return cached;
   }
 
-  const user = await userRepository.findById(userId);
+  const user = await userRepository.findById(targetUserId);
   if (!user) {
     throw new AppError('User not found', 404);
   }
@@ -129,9 +132,10 @@ export async function getUserById(userId: string, actor: Actor) {
 }
 
 export async function updateUser(userId: string, input: unknown, actor: Actor) {
-  ensureSelfOrAdmin(actor, userId);
+  const targetUserId = userIdSchema.parse(userId);
+  ensureSelfOrAdmin(actor, targetUserId);
 
-  const existing = await userRepository.findById(userId, true);
+  const existing = await userRepository.findById(targetUserId, true);
   if (!existing) {
     throw new AppError('User not found', 404);
   }
@@ -154,7 +158,7 @@ export async function updateUser(userId: string, input: unknown, actor: Actor) {
     if (data.email !== undefined) {
       const email = normalizeEmail(data.email);
       const owner = await userRepository.findByEmail(email);
-      if (owner && owner.id !== userId) {
+      if (owner && owner.id !== targetUserId) {
         throw new AppError('Email already registered', 409);
       }
       updates.email = email;
@@ -176,25 +180,26 @@ export async function updateUser(userId: string, input: unknown, actor: Actor) {
     updates.name = data.name;
   }
 
-  const updated = await userRepository.update(userId, updates);
+  const updated = await userRepository.update(targetUserId, updates);
   if (!updated) {
     throw new AppError('User not found', 404);
   }
 
-  await invalidateUserCaches(userId);
-  await setJSONCache(userByIdCacheKey(userId), updated, USER_CACHE_TTL_SECONDS);
+  await invalidateUserCaches(targetUserId);
+  await setJSONCache(userByIdCacheKey(targetUserId), updated, USER_CACHE_TTL_SECONDS);
 
   return updated;
 }
 
 export async function deactivateUser(userId: string) {
-  const updated = await userRepository.update(userId, { status: 'inactive' });
+  const targetUserId = userIdSchema.parse(userId);
+  const updated = await userRepository.update(targetUserId, { status: 'inactive' });
   if (!updated) {
     throw new AppError('User not found', 404);
   }
 
-  await invalidateUserCaches(userId);
-  await setJSONCache(userByIdCacheKey(userId), updated, USER_CACHE_TTL_SECONDS);
+  await invalidateUserCaches(targetUserId);
+  await setJSONCache(userByIdCacheKey(targetUserId), updated, USER_CACHE_TTL_SECONDS);
 
   return updated;
 }

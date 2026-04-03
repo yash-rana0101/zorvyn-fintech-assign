@@ -31,8 +31,10 @@ model Transaction {
   idempotencyKey String?  @unique @map("idempotency_key") @db.VarChar(255)
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz(6)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([deletedAt], map: "idx_transactions_deleted_at")
   @@map("transactions")
 }

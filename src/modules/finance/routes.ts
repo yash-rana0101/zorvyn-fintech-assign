@@ -7,8 +7,8 @@ const router = Router();
 
 router.use(authenticate);
 
-router.post('/', controller.createTransaction);
-router.get('/', controller.listTransactions);
+router.post('/', authorize(['admin', 'analyst', 'viewer']), controller.createTransaction);
+router.get('/', authorize(['admin', 'analyst', 'viewer']), controller.listTransactions);
 router.put('/:id', authorize(['admin']), controller.updateTransaction);
 router.delete('/:id', authorize(['admin']), controller.deleteTransaction);
 

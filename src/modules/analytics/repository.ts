@@ -14,7 +14,7 @@ type TrendRow = {
 
 export async function getSummary(userId?: string) {
   const values: unknown[] = [];
-  const whereClause = userId ? 'WHERE user_id = $1' : '';
+  const whereClause = userId ? 'WHERE deleted_at IS NULL AND user_id = $1' : 'WHERE deleted_at IS NULL';
 
   if (userId) {
     values.push(userId);
@@ -42,7 +42,7 @@ export async function getSummary(userId?: string) {
 
 export async function getMonthlyTrends(userId?: string): Promise<TrendRow[]> {
   const values: unknown[] = [];
-  const whereClause = userId ? 'WHERE user_id = $1' : '';
+  const whereClause = userId ? 'WHERE deleted_at IS NULL AND user_id = $1' : 'WHERE deleted_at IS NULL';
 
   if (userId) {
     values.push(userId);

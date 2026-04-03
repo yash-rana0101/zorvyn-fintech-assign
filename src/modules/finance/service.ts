@@ -4,7 +4,7 @@ import { DEFAULT_LIMIT, DEFAULT_PAGE, MAX_LIMIT, ROLES, TRANSACTION_TYPES } from
 import { getCache, getJSONCache, incrementCache, setJSONCache } from '../../lib/Redis';
 import * as financeRepository from './repository';
 import { findById as findUserById } from '../user/repository';
-import { invalidateAnalyticsCache } from '../analytics/service';
+import { emitFinanceTransactionChanged } from '../../events/domainEvents';
 
 type Actor = {
   user_id: string;
@@ -13,10 +13,26 @@ type Actor = {
 
 const TRANSACTION_LIST_CACHE_TTL_SECONDS = 20;
 const TRANSACTION_LIST_VERSION_TTL_SECONDS = 60 * 60;
+const MONEY_REGEX = /^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/;
+
+function normalizeMoney(value: string): string {
+  const [whole, fraction = ''] = value.split('.');
+  const normalizedFraction = `${fraction}00`.slice(0, 2);
+  return `${whole}.${normalizedFraction}`;
+}
+
+const moneySchema = z.coerce
+  .string()
+  .trim()
+  .regex(MONEY_REGEX, 'amount must be a positive decimal with up to 2 decimal places')
+  .refine((value) => Number(value) > 0, 'amount must be greater than 0')
+  .transform(normalizeMoney);
+
+const transactionIdSchema = z.string().uuid('transaction id must be a valid UUID');
 
 const createSchema = z.object({
   user_id: z.string().uuid().optional(),
-  amount: z.coerce.number().positive(),
+  amount: moneySchema,
   type: z.enum(TRANSACTION_TYPES),
   category: z.string().trim().min(1).max(100),
   note: z.string().trim().max(1000).optional(),
@@ -44,7 +60,7 @@ const listSchema = z
 
 const updateSchema = z
   .object({
-    amount: z.coerce.number().positive().optional(),
+    amount: moneySchema.optional(),
     type: z.enum(TRANSACTION_TYPES).optional(),
     category: z.string().trim().min(1).max(100).optional(),
     note: z.string().trim().max(1000).nullable().optional(),
@@ -56,7 +72,7 @@ function toPublicTransaction(row: financeRepository.TransactionRow) {
   return {
     id: row.id,
     user_id: row.user_id,
-    amount: Number(row.amount),
+    amount: row.amount,
     type: row.type,
     category: row.category,
     note: row.note,
@@ -168,10 +184,8 @@ export async function createTransaction(input: unknown, actor: Actor) {
   }
 
   if (result.created) {
-    await Promise.all([
-      invalidateTransactionCaches(targetUserId),
-      invalidateAnalyticsCache(targetUserId),
-    ]);
+    await invalidateTransactionCaches(targetUserId);
+    emitFinanceTransactionChanged({ userId: targetUserId });
   }
 
   return {
@@ -249,8 +263,9 @@ export async function listTransactions(input: unknown, actor: Actor) {
 }
 
 export async function updateTransaction(id: string, input: unknown) {
+  const transactionId = transactionIdSchema.parse(id);
   const updates = updateSchema.parse(input);
-  const updated = await financeRepository.update(id, {
+  const updated = await financeRepository.update(transactionId, {
     amount: updates.amount,
     type: updates.type,
     category: updates.category,
@@ -262,24 +277,21 @@ export async function updateTransaction(id: string, input: unknown) {
     throw new AppError('Transaction not found', 404);
   }
 
-  await Promise.all([
-    invalidateTransactionCaches(updated.user_id),
-    invalidateAnalyticsCache(updated.user_id),
-  ]);
+  await invalidateTransactionCaches(updated.user_id);
+  emitFinanceTransactionChanged({ userId: updated.user_id });
 
   return toPublicTransaction(updated);
 }
 
 export async function deleteTransaction(id: string) {
-  const deleted = await financeRepository.deleteById(id);
+  const transactionId = transactionIdSchema.parse(id);
+  const deleted = await financeRepository.deleteById(transactionId);
   if (!deleted) {
     throw new AppError('Transaction not found', 404);
   }
 
-  await Promise.all([
-    invalidateTransactionCaches(deleted.user_id),
-    invalidateAnalyticsCache(deleted.user_id),
-  ]);
+  await invalidateTransactionCaches(deleted.user_id);
+  emitFinanceTransactionChanged({ userId: deleted.user_id });
 
   return toPublicTransaction(deleted);
 }

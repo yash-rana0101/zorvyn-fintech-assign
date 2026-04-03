@@ -15,6 +15,7 @@ services:
       - ./prisma/migrations/002_add_users_name.sql:/docker-entrypoint-initdb.d/002_add_users_name.sql:ro
       - ./prisma/migrations/003_phase3_transactions_schema.sql:/docker-entrypoint-initdb.d/003_phase3_transactions_schema.sql:ro
       - ./prisma/migrations/004_phase6_performance_indexes.sql:/docker-entrypoint-initdb.d/004_phase6_performance_indexes.sql:ro
+      - ./prisma/migrations/005_phase11_soft_delete.sql:/docker-entrypoint-initdb.d/005_phase11_soft_delete.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
       interval: 10s
