@@ -3,7 +3,6 @@ import { env } from './config/env';
 import { closePool } from './db';
 
 const server = app.listen(env.PORT, () => {
-  // Keep startup output minimal and assignment-friendly.
   // eslint-disable-next-line no-console
   console.log(`Server is running on port ${env.PORT}`);
 });
