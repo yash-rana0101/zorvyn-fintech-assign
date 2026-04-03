@@ -1,0 +1,50 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: finance_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-finance_db}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./prisma/migrations/001_init.sql:/docker-entrypoint-initdb.d/001_init.sql:ro
+      - ./prisma/migrations/002_add_users_name.sql:/docker-entrypoint-initdb.d/002_add_users_name.sql:ro
+      - ./prisma/migrations/003_phase3_transactions_schema.sql:/docker-entrypoint-initdb.d/003_phase3_transactions_schema.sql:ro
+      - ./prisma/migrations/004_phase6_performance_indexes.sql:/docker-entrypoint-initdb.d/004_phase6_performance_indexes.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: finance_api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: 3000
+      JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-key-change-in-production}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-1h}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-finance_db}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_POOL_MIN: ${DB_POOL_MIN:-1}
+      DB_POOL_MAX: ${DB_POOL_MAX:-10}
+      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-finance_db}
+
+volumes:
+  postgres_data:

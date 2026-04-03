@@ -44,6 +44,32 @@ npm run dev
 
 Server default: `http://localhost:3000`.
 
+## Run With Docker
+
+1. Build and start services:
+
+```bash
+npm run docker:up
+```
+
+2. View logs:
+
+```bash
+npm run docker:logs
+```
+
+3. Stop containers:
+
+```bash
+npm run docker:down
+```
+
+Notes:
+
+- API is available at `http://localhost:3000`.
+- Postgres is available at `localhost:5432`.
+- SQL files in `prisma/migrations` are mounted into Postgres init and run on first database initialization.
+
 ## Scope
 
 - Auth with JWT
