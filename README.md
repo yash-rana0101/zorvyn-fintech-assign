@@ -1,166 +1,87 @@
-# Finance Backend
+# Finance Backend (Assignment Version)
 
-Finance Data Processing & Access Control System with a single API service and modular folders.
+Simple modular monolith for evaluation.
 
----
+## Run
 
-## Architecture
-
-Single-service modular backend
-
-```
-Client → API
-          ├── Auth Module
-          ├── User Module
-          ├── Finance Module
-          └── Analytics Module
-          ↓
-        PostgreSQL + Redis
-```
-
----
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-- Node.js >= 18
-- Docker & Docker Compose
-- npm >= 9
-
-### 1. Clone & Install
+1. Install dependencies:
 
 ```bash
 npm install
 ```
 
-### 2. Configure Environment
+2. Copy environment file:
 
 ```bash
 cp .env.example .env
-# Edit .env with your values
 ```
 
-### 3. Start Infrastructure
+3. Start PostgreSQL (for local DB-backed run):
 
 ```bash
-docker-compose up postgres redis -d
+docker-compose up postgres -d
 ```
 
-### 4. Run Migrations
+4. Run migrations:
 
 ```bash
 bash scripts/migrate.sh
 ```
 
-### 5. Seed Database
-
-```bash
-bash scripts/seed.sh
-```
-
-### 6. Start API
+5. Start the app:
 
 ```bash
 npm run dev
 ```
 
-API available at: `http://localhost:3000`
+Server runs on `http://localhost:3000`.
 
----
+## Final Structure
 
-## Project Structure
-
-```
-/apps
-  /api              # Main API service
-/packages
-  /database         # DB connection & migrations
-  /cache            # Redis client & helpers
-  /event-bus        # Event abstraction for async processing
-  /logger           # Winston logging
-  /monitoring       # Metrics & health checks
-  /security         # JWT, password hashing, tokens
-  /utils            # Shared utilities
-/infra
-  /docker           # Dockerfiles
-  /postgres         # DB schema
-  /redis            # Redis config
-  /nginx            # Load balancer config
-/scripts            # Shell scripts
-/tests              # Unit & integration tests
+```text
+/src
++-- config
++-- db
++-- modules
+�   +-- auth
+�   +-- user
+�   +-- finance
+�   +-- analytics
++-- middleware
++-- utils
++-- types
++-- app.ts
++-- server.ts
 ```
 
----
+## Included Features
 
-## 🔐 API Endpoints (Phase 1)
+- Auth (JWT): register, login, me
+- User CRUD
+- Finance transactions with idempotency (`idempotency_key`)
+- Basic analytics from direct DB queries (summary, trends)
 
-| Method | Endpoint       | Auth Required | Description           |
-| ------ | -------------- | ------------- | --------------------- |
-| POST   | /auth/register | No            | Register a new user   |
-| POST   | /auth/login    | No            | Login, receive JWT    |
-| POST   | /auth/refresh  | No            | Rotate refresh token  |
-| POST   | /auth/logout   | Yes           | Revoke active session |
-| GET    | /auth/me       | Yes           | Get current user info |
-| GET    | /health        | No            | Health check          |
+## Removed Complexity
 
----
+- Event bus and async event flows
+- Consumers and jobs
+- Retry handlers and reconciliation schedulers
+- Finance write microservice runtime path
 
-## 👤 Roles
+## API Routes
 
-| Role    | Permissions             |
-| ------- | ----------------------- |
-| viewer  | Read-only access        |
-| analyst | Read + analytics access |
-| admin   | Full access             |
-
----
-
-## 🧪 Testing
-
-```bash
-npm test
-```
-
-## Operations
-
-- Multi-region Nginx template: `infra/nginx/nginx.multi-region.conf`
-- Edge WAF rules: `infra/nginx/waf.rules.conf`
-- Reconciliation run (manual): `npm run reconcile`
-- Shard rebalancing helper: `npm run rebalance-shard -- <user_id> <shard_id> [reason]`
-- DR failover helper: `bash scripts/dr-failover.sh <failed_region> <target_region>`
-- Backup + restore: `bash scripts/backup.sh` and `bash scripts/restore.sh <backup_file.sql.gz>`
-- CI/CD pipeline: `.github/workflows/phase10-ci-cd.yml`
-
-DR runbook: `docs/runbooks/disaster-recovery.md`
-
----
-
-## Observability
-
-### Runtime Endpoints
-
-- API health: `GET /health`
-- API metrics: `GET /metrics`
-
-API responses return `x-request-id` and `x-trace-id` headers for request correlation.
-
-### Run Prometheus + Grafana
-
-```bash
-docker-compose --profile observability up -d prometheus grafana
-```
-
-- Prometheus: `http://localhost:9090`
-- Grafana: `http://localhost:3001` (default login: `admin` / `admin`)
-
-The starter dashboard is auto-provisioned from:
-
-- `infra/grafana/dashboards/finance-observability.json`
-
----
-
-## 📄 Documentation
-
-See [`docs/PRD.md`](docs/PRD.md) for full product requirements.
-See [`docs/phases/`](docs/phases/) for phase-by-phase implementation guides.
+- `GET /health`
+- `POST /api/v1/auth/register`
+- `POST /api/v1/auth/login`
+- `GET /api/v1/auth/me`
+- `POST /api/v1/users`
+- `GET /api/v1/users`
+- `GET /api/v1/users/:id`
+- `PUT /api/v1/users/:id`
+- `DELETE /api/v1/users/:id`
+- `POST /api/v1/transactions`
+- `GET /api/v1/transactions`
+- `PUT /api/v1/transactions/:id`
+- `DELETE /api/v1/transactions/:id`
+- `GET /api/v1/analytics/summary`
+- `GET /api/v1/analytics/trends`

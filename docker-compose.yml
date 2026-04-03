@@ -1,7 +1,4 @@
 services:
-  # ─────────────────────────────────────────
-  # PostgreSQL
-  # ─────────────────────────────────────────
   postgres:
     image: postgres:15-alpine
     container_name: finance_postgres
@@ -21,88 +18,5 @@ services:
       timeout: 5s
       retries: 5
 
-  # ─────────────────────────────────────────
-  # Redis
-  # ─────────────────────────────────────────
-  redis:
-    image: redis:7-alpine
-    container_name: finance_redis
-    restart: unless-stopped
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-      - ./infra/redis/redis.conf:/usr/local/etc/redis/redis.conf
-    command: redis-server /usr/local/etc/redis/redis.conf
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # ─────────────────────────────────────────
-  # API Service
-  # ─────────────────────────────────────────
-  api:
-    build:
-      context: .
-      dockerfile: infra/docker/Dockerfile.api
-    container_name: finance_api
-    restart: unless-stopped
-    ports:
-      - "${PORT:-3000}:3000"
-    env_file:
-      - .env
-    environment:
-      DB_HOST: postgres
-      REDIS_HOST: redis
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    volumes:
-      - ./apps/api:/app/apps/api
-      - ./packages:/app/packages
-
-  # ─────────────────────────────────────────
-  # Prometheus (Phase 9)
-  # ─────────────────────────────────────────
-  prometheus:
-    image: prom/prometheus:v2.53.0
-    container_name: finance_prometheus
-    restart: unless-stopped
-    profiles: ["observability"]
-    command:
-      - --config.file=/etc/prometheus/prometheus.yml
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-    depends_on:
-      api:
-        condition: service_started
-
-  # ─────────────────────────────────────────
-  # Grafana (Phase 9)
-  # ─────────────────────────────────────────
-  grafana:
-    image: grafana/grafana:11.1.0
-    container_name: finance_grafana
-    restart: unless-stopped
-    profiles: ["observability"]
-    ports:
-      - "3001:3000"
-    environment:
-      GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: admin
-    volumes:
-      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards:ro
-    depends_on:
-      prometheus:
-        condition: service_started
-
 volumes:
   postgres_data:
-  redis_data:

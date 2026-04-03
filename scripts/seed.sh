@@ -22,11 +22,11 @@ echo "🌱 Seeding database..."
 ADMIN_HASH='$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewYpwBAM2VEkrGVu'
 
 psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" <<SQL
-  INSERT INTO users (id, email, password_hash, role, status)
+  INSERT INTO users (id, name, email, password_hash, role, status)
   VALUES
-    (gen_random_uuid(), 'admin@finance.com',   '$ADMIN_HASH', 'admin',   'active'),
-    (gen_random_uuid(), 'analyst@finance.com', '$ADMIN_HASH', 'analyst', 'active'),
-    (gen_random_uuid(), 'viewer@finance.com',  '$ADMIN_HASH', 'viewer',  'active')
+    (uuid_generate_v4(), 'Admin User',   'admin@finance.com',   '$ADMIN_HASH', 'admin',   'active'),
+    (uuid_generate_v4(), 'Analyst User', 'analyst@finance.com', '$ADMIN_HASH', 'analyst', 'active'),
+    (uuid_generate_v4(), 'Viewer User',  'viewer@finance.com',  '$ADMIN_HASH', 'viewer',  'active')
   ON CONFLICT (email) DO NOTHING;
 SQL
 

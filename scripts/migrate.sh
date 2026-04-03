@@ -16,7 +16,7 @@ DB_NAME=${DB_NAME:-finance_db}
 DB_USER=${DB_USER:-postgres}
 export PGPASSWORD=${DB_PASSWORD:-postgres}
 
-MIGRATIONS_DIR="packages/database/migrations"
+MIGRATIONS_DIR="src/db/migrations"
 
 echo "🔄 Running migrations on ${DB_HOST}:${DB_PORT}/${DB_NAME}..."
 
