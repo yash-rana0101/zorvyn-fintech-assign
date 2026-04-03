@@ -1,6 +1,26 @@
-# Finance Backend (Assignment Version)
+# Backend Assignment
 
-Simple modular monolith for evaluation.
+Clean, assignment-level modular monolith.
+
+## Root Structure
+
+```text
+/backend-assignment
+	/src
+	/prisma
+		schema.prisma
+		/migrations
+	/tests
+		auth.test.ts
+		user.test.ts
+		finance.test.ts
+		analytics.test.ts
+	package.json
+	tsconfig.json
+	.env
+	.env.example
+	README.md
+```
 
 ## Run
 
@@ -10,78 +30,25 @@ Simple modular monolith for evaluation.
 npm install
 ```
 
-2. Copy environment file:
+2. Copy env template and set values if needed:
 
 ```bash
 cp .env.example .env
 ```
 
-3. Start PostgreSQL (for local DB-backed run):
-
-```bash
-docker-compose up postgres -d
-```
-
-4. Run migrations:
-
-```bash
-bash scripts/migrate.sh
-```
-
-5. Start the app:
+3. Start the app:
 
 ```bash
 npm run dev
 ```
 
-Server runs on `http://localhost:3000`.
+Server default: `http://localhost:3000`.
 
-## Final Structure
+## Scope
 
-```text
-/src
-+-- config
-+-- db
-+-- modules
-¦   +-- auth
-¦   +-- user
-¦   +-- finance
-¦   +-- analytics
-+-- middleware
-+-- utils
-+-- types
-+-- app.ts
-+-- server.ts
-```
-
-## Included Features
-
-- Auth (JWT): register, login, me
+- Auth with JWT
 - User CRUD
-- Finance transactions with idempotency (`idempotency_key`)
-- Basic analytics from direct DB queries (summary, trends)
+- Finance transactions with idempotency
+- Basic analytics queries
 
-## Removed Complexity
-
-- Event bus and async event flows
-- Consumers and jobs
-- Retry handlers and reconciliation schedulers
-- Finance write microservice runtime path
-
-## API Routes
-
-- `GET /health`
-- `POST /api/v1/auth/register`
-- `POST /api/v1/auth/login`
-- `GET /api/v1/auth/me`
-- `POST /api/v1/users`
-- `GET /api/v1/users`
-- `GET /api/v1/users/:id`
-- `PUT /api/v1/users/:id`
-- `DELETE /api/v1/users/:id`
-- `POST /api/v1/transactions`
-- `GET /api/v1/transactions`
-- `PUT /api/v1/transactions/:id`
-- `DELETE /api/v1/transactions/:id`
-- `GET /api/v1/analytics/summary`
-- `GET /api/v1/analytics/trends`
+`/src` remains the application source of truth and was not modified for this root-level cleanup.
