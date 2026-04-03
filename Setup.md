@@ -9,6 +9,7 @@ This file is a dedicated setup reference for running the Zorvyn Finance Backend 
 - Docker + Docker Compose (recommended)
 
 Optional (only for manual local mode):
+
 - PostgreSQL
 - Redis
 
@@ -80,6 +81,7 @@ npm run seed
 ```
 
 Notes:
+
 - The database migrations in `prisma/migrations` are mounted into Postgres init scripts and run on first DB initialization.
 - Seeding is idempotent and safe to rerun.
 
@@ -113,6 +115,25 @@ Quick checks:
 - `GET /api/v1`
 - `POST /api/v1/auth/register`
 - `POST /api/v1/auth/login`
+
+Swagger verification:
+
+- `GET /docs`
+- `GET /openapi.json`
+- `GET /openapi.yaml`
+
+---
+
+## 4b) Export Shareable OpenAPI Files
+
+```bash
+npm run openapi:export
+```
+
+Outputs:
+
+- `docs/openapi.json`
+- `docs/openapi.yaml`
 
 ## 5) Common Configuration Toggles
 
@@ -148,15 +169,15 @@ Quick checks:
 
 ## 7) Useful Commands
 
-| Command | Purpose |
-|---|---|
-| `npm run dev` | Start API in watch mode |
-| `npm run start` | Start API via tsx |
-| `npm run typecheck` | Run TypeScript checks |
-| `npm run seed` | Seed users and transactions |
-| `npm run docker:up` | Start Docker stack |
-| `npm run docker:logs` | Tail Docker logs |
-| `npm run docker:down` | Stop Docker stack |
+| Command               | Purpose                     |
+| --------------------- | --------------------------- |
+| `npm run dev`         | Start API in watch mode     |
+| `npm run start`       | Start API via tsx           |
+| `npm run typecheck`   | Run TypeScript checks       |
+| `npm run seed`        | Seed users and transactions |
+| `npm run docker:up`   | Start Docker stack          |
+| `npm run docker:logs` | Tail Docker logs            |
+| `npm run docker:down` | Stop Docker stack           |
 
 ## 8) Next Reading
 

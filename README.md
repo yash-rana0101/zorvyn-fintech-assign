@@ -41,6 +41,7 @@ JWT-authenticated finance API with role-based access control, idempotent transac
 - [Project Structure](#project-structure)
 - [Setup and Installation](#setup-and-installation)
 - [Environment Variables](#environment-variables)
+- [Swagger and OpenAPI](#swagger-and-openapi)
 - [API Reference](#api-reference)
 - [Data and Domain Rules](#data-and-domain-rules)
 - [Caching Strategy](#caching-strategy)
@@ -243,6 +244,25 @@ curl http://localhost:3000/health
 | `RATE_LIMIT_MAX`       | Global max requests per window                     | `200`         |
 | `AUTH_RATE_LIMIT_MAX`  | Auth routes max requests per window                | `30`          |
 | `LOGIN_RATE_LIMIT_MAX` | Login max requests per window                      | `10`          |
+
+---
+
+## Swagger and OpenAPI
+
+- Swagger UI: `http://localhost:3000/docs`
+- OpenAPI JSON: `http://localhost:3000/openapi.json`
+- OpenAPI YAML: `http://localhost:3000/openapi.yaml`
+
+Generate shareable spec files for Swagger Editor/Hub:
+
+```bash
+npm run openapi:export
+```
+
+Generated files:
+
+- `docs/openapi.json`
+- `docs/openapi.yaml`
 
 ---
 

@@ -8,6 +8,7 @@ import financeRoutes from './modules/finance/routes';
 import analyticsRoutes from './modules/analytics/routes';
 import { errorHandler } from './middleware/errorHandler';
 import { initializeAnalyticsCacheInvalidation } from './modules/analytics/invalidation';
+import { registerSwagger } from './docs/swagger';
 import {
   applyTrustProxy,
   corsOptions,
@@ -15,7 +16,6 @@ import {
   generalRateLimiter,
   requireJsonContentType,
 } from './middleware/security';
-import { me } from './modules/auth/controller';
 
 const app = express();
 
@@ -56,6 +56,8 @@ app.get('/api/v1', (_req, res) => {
     message: 'Finance API v1',
   });
 });
+
+registerSwagger(app);
 
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', userRoutes);
