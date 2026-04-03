@@ -1,6 +1,7 @@
 import app from './app';
 import { env } from './config/env';
 import { closePool } from './db';
+import { closeRedis } from './lib/Redis';
 
 const server = app.listen(env.PORT, () => {
   // eslint-disable-next-line no-console
@@ -12,6 +13,7 @@ async function shutdown(signal: string) {
   console.log(`${signal} received, shutting down...`);
 
   server.close(async () => {
+    await closeRedis();
     await closePool();
     process.exit(0);
   });

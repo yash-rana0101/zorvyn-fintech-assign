@@ -1,13 +1,18 @@
 import { z } from 'zod';
 import { AppError } from '../../utils/errors';
 import { DEFAULT_LIMIT, DEFAULT_PAGE, MAX_LIMIT, ROLES, TRANSACTION_TYPES } from '../../utils/constants';
+import { getCache, getJSONCache, incrementCache, setJSONCache } from '../../lib/Redis';
 import * as financeRepository from './repository';
 import { findById as findUserById } from '../user/repository';
+import { invalidateAnalyticsCache } from '../analytics/service';
 
 type Actor = {
   user_id: string;
   role: (typeof ROLES)[number];
 };
+
+const TRANSACTION_LIST_CACHE_TTL_SECONDS = 20;
+const TRANSACTION_LIST_VERSION_TTL_SECONDS = 60 * 60;
 
 const createSchema = z.object({
   user_id: z.string().uuid().optional(),
@@ -61,6 +66,68 @@ function toPublicTransaction(row: financeRepository.TransactionRow) {
   };
 }
 
+function transactionListVersionKey(scope: string): string {
+  return `transactions:list:version:${scope}`;
+}
+
+async function getTransactionListVersion(scope: string): Promise<number> {
+  const raw = await getCache(transactionListVersionKey(scope));
+  const parsed = Number.parseInt(raw ?? '', 10);
+
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return 1;
+  }
+
+  return parsed;
+}
+
+function serializeFilters(filters: {
+  user_id?: string;
+  type?: 'income' | 'expense';
+  category?: string;
+  start_date?: Date;
+  end_date?: Date;
+}) {
+  return {
+    ...filters,
+    start_date: filters.start_date?.toISOString(),
+    end_date: filters.end_date?.toISOString(),
+  };
+}
+
+function buildTransactionListCacheKey(params: {
+  scope: string;
+  version: number;
+  actor: Actor;
+  filters: {
+    user_id?: string;
+    type?: 'income' | 'expense';
+    category?: string;
+    start_date?: Date;
+    end_date?: Date;
+  };
+  page: number;
+  limit: number;
+}): string {
+  return `transactions:list:${params.scope}:v${params.version}:${JSON.stringify({
+    actor_role: params.actor.role,
+    actor_user_id: params.actor.user_id,
+    filters: serializeFilters(params.filters),
+    page: params.page,
+    limit: params.limit,
+  })}`;
+}
+
+async function invalidateTransactionCaches(userId: string): Promise<void> {
+  await Promise.all([
+    incrementCache(transactionListVersionKey('all'), TRANSACTION_LIST_VERSION_TTL_SECONDS),
+    incrementCache(
+      transactionListVersionKey(`user:${userId}`),
+      TRANSACTION_LIST_VERSION_TTL_SECONDS
+    ),
+  ]);
+}
+
 async function assertActiveUser(userId: string) {
   const user = await findUserById(userId);
   if (!user) {
@@ -100,6 +167,13 @@ export async function createTransaction(input: unknown, actor: Actor) {
     throw new AppError('Unable to process transaction', 409);
   }
 
+  if (result.created) {
+    await Promise.all([
+      invalidateTransactionCaches(targetUserId),
+      invalidateAnalyticsCache(targetUserId),
+    ]);
+  }
+
   return {
     created: result.created,
     transaction: toPublicTransaction(result.transaction),
@@ -128,6 +202,30 @@ export async function listTransactions(input: unknown, actor: Actor) {
   if (data.start_date) filters.start_date = data.start_date;
   if (data.end_date) filters.end_date = data.end_date;
 
+  const scope = filters.user_id ? `user:${filters.user_id}` : 'all';
+  const version = await getTransactionListVersion(scope);
+  const cacheKey = buildTransactionListCacheKey({
+    scope,
+    version,
+    actor,
+    filters,
+    page: data.page,
+    limit: data.limit,
+  });
+  const cached = await getJSONCache<{
+    data: ReturnType<typeof toPublicTransaction>[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      total_pages: number;
+    };
+  }>(cacheKey);
+
+  if (cached) {
+    return cached;
+  }
+
   const offset = (data.page - 1) * data.limit;
 
   const [rows, total] = await Promise.all([
@@ -135,7 +233,7 @@ export async function listTransactions(input: unknown, actor: Actor) {
     financeRepository.count(filters),
   ]);
 
-  return {
+  const response = {
     data: rows.map(toPublicTransaction),
     pagination: {
       page: data.page,
@@ -144,6 +242,10 @@ export async function listTransactions(input: unknown, actor: Actor) {
       total_pages: Math.max(1, Math.ceil(total / data.limit)),
     },
   };
+
+  await setJSONCache(cacheKey, response, TRANSACTION_LIST_CACHE_TTL_SECONDS);
+
+  return response;
 }
 
 export async function updateTransaction(id: string, input: unknown) {
@@ -160,6 +262,11 @@ export async function updateTransaction(id: string, input: unknown) {
     throw new AppError('Transaction not found', 404);
   }
 
+  await Promise.all([
+    invalidateTransactionCaches(updated.user_id),
+    invalidateAnalyticsCache(updated.user_id),
+  ]);
+
   return toPublicTransaction(updated);
 }
 
@@ -168,6 +275,11 @@ export async function deleteTransaction(id: string) {
   if (!deleted) {
     throw new AppError('Transaction not found', 404);
   }
+
+  await Promise.all([
+    invalidateTransactionCaches(deleted.user_id),
+    invalidateAnalyticsCache(deleted.user_id),
+  ]);
 
   return toPublicTransaction(deleted);
 }

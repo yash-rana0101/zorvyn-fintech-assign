@@ -3,7 +3,21 @@ import { z } from 'zod';
 import { signAccessToken } from '../../config/jwt';
 import { AppError } from '../../utils/errors';
 import { ROLES } from '../../utils/constants';
+import { getJSONCache, incrementCache, setJSONCache } from '../../lib/Redis';
 import { createUser, findUserByEmail, findUserById } from './repository';
+
+const AUTH_ME_CACHE_TTL_SECONDS = 120;
+const USER_BY_ID_CACHE_TTL_SECONDS = 120;
+const USER_LIST_VERSION_KEY = 'users:list:version';
+const USER_LIST_VERSION_TTL_SECONDS = 60 * 60;
+
+function userByIdCacheKey(userId: string): string {
+  return `users:by-id:${userId}`;
+}
+
+function authMeCacheKey(userId: string): string {
+  return `auth:me:user:${userId}`;
+}
 
 const registerSchema = z.object({
   name: z.string().trim().min(1).max(255).optional(),
@@ -62,10 +76,17 @@ export async function register(input: unknown) {
     role: created.role,
   });
 
+  const safeUser = toSafeUser(created);
+  await Promise.all([
+    incrementCache(USER_LIST_VERSION_KEY, USER_LIST_VERSION_TTL_SECONDS),
+    setJSONCache(userByIdCacheKey(created.id), safeUser, USER_BY_ID_CACHE_TTL_SECONDS),
+    setJSONCache(authMeCacheKey(created.id), safeUser, AUTH_ME_CACHE_TTL_SECONDS),
+  ]);
+
   return {
     access_token,
     token_type: 'Bearer',
-    user: toSafeUser(created),
+    user: safeUser,
   };
 }
 
@@ -100,10 +121,19 @@ export async function login(input: unknown) {
 }
 
 export async function getMe(userId: string) {
+  const cacheKey = authMeCacheKey(userId);
+  const cached = await getJSONCache<ReturnType<typeof toSafeUser>>(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
   const user = await findUserById(userId);
   if (!user) {
     throw new AppError('User not found', 404);
   }
 
-  return toSafeUser(user);
+  const response = toSafeUser(user);
+  await setJSONCache(cacheKey, response, AUTH_ME_CACHE_TTL_SECONDS);
+
+  return response;
 }

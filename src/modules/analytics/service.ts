@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { AppError } from '../../utils/errors';
 import { ROLES } from '../../utils/constants';
+import { getCache, getJSONCache, incrementCache, setJSONCache } from '../../lib/Redis';
 import * as analyticsRepository from './repository';
 
 type Actor = {
@@ -8,9 +9,53 @@ type Actor = {
   role: (typeof ROLES)[number];
 };
 
+type SummaryResponse = {
+  total_income: number;
+  total_expense: number;
+  net_balance: number;
+};
+
+type TrendResponse = {
+  month: string;
+  income: number;
+  expense: number;
+};
+
+const ANALYTICS_CACHE_TTL_SECONDS = 30;
+const ANALYTICS_VERSION_TTL_SECONDS = 60 * 60;
+
 const querySchema = z.object({
   user_id: z.string().uuid().optional(),
 });
+
+function analyticsVersionKey(targetUserId?: string): string {
+  return targetUserId
+    ? `analytics:version:user:${targetUserId}`
+    : 'analytics:version:all';
+}
+
+function summaryCacheKey(targetUserId: string | undefined, version: number): string {
+  return targetUserId
+    ? `analytics:summary:user:${targetUserId}:v${version}`
+    : `analytics:summary:all:v${version}`;
+}
+
+function trendsCacheKey(targetUserId: string | undefined, version: number): string {
+  return targetUserId
+    ? `analytics:trends:user:${targetUserId}:v${version}`
+    : `analytics:trends:all:v${version}`;
+}
+
+async function getAnalyticsVersion(targetUserId?: string): Promise<number> {
+  const raw = await getCache(analyticsVersionKey(targetUserId));
+  const parsed = Number.parseInt(raw ?? '', 10);
+
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return 1;
+  }
+
+  return parsed;
+}
 
 function resolveTargetUserId(actor: Actor, requestedUserId?: string): string | undefined {
   if (actor.role === 'viewer') {
@@ -28,24 +73,53 @@ export async function getSummary(actor: Actor, queryInput: unknown) {
   const data = querySchema.parse(queryInput ?? {});
   const targetUserId = resolveTargetUserId(actor, data.user_id);
 
+  const version = await getAnalyticsVersion(targetUserId);
+  const cacheKey = summaryCacheKey(targetUserId, version);
+  const cached = await getJSONCache<SummaryResponse>(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
   const summary = await analyticsRepository.getSummary(targetUserId);
 
-  return {
+  const response: SummaryResponse = {
     total_income: Number(summary.total_income),
     total_expense: Number(summary.total_expense),
     net_balance: Number(summary.net_balance),
   };
+
+  await setJSONCache(cacheKey, response, ANALYTICS_CACHE_TTL_SECONDS);
+
+  return response;
 }
 
 export async function getTrends(actor: Actor, queryInput: unknown) {
   const data = querySchema.parse(queryInput ?? {});
   const targetUserId = resolveTargetUserId(actor, data.user_id);
 
+  const version = await getAnalyticsVersion(targetUserId);
+  const cacheKey = trendsCacheKey(targetUserId, version);
+  const cached = await getJSONCache<TrendResponse[]>(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
   const rows = await analyticsRepository.getMonthlyTrends(targetUserId);
 
-  return rows.map((row) => ({
+  const response: TrendResponse[] = rows.map((row) => ({
     month: row.month_key,
     income: Number(row.income),
     expense: Number(row.expense),
   }));
+
+  await setJSONCache(cacheKey, response, ANALYTICS_CACHE_TTL_SECONDS);
+
+  return response;
+}
+
+export async function invalidateAnalyticsCache(userId?: string): Promise<void> {
+  await incrementCache(analyticsVersionKey(), ANALYTICS_VERSION_TTL_SECONDS);
+  if (userId) {
+    await incrementCache(analyticsVersionKey(userId), ANALYTICS_VERSION_TTL_SECONDS);
+  }
 }
