@@ -1,7 +1,7 @@
 {
   "name": "finance-backend",
   "version": "1.0.0",
-  "description": "Simple modular monolith finance backend",
+  "description": "Simple modular finance Dashboard Api backend with authentication and analytics features .",
   "private": true,
   "scripts": {
     "dev": "tsx watch src/server.ts",
