@@ -2,14 +2,10 @@ import { z } from 'zod';
 import { AppError } from '../../utils/errors';
 import { DEFAULT_LIMIT, DEFAULT_PAGE, MAX_LIMIT, ROLES, TRANSACTION_TYPES } from '../../utils/constants';
 import { getCache, getJSONCache, incrementCache, setJSONCache } from '../../lib/Redis';
+import { ServiceActor } from '../../types';
 import * as financeRepository from './repository';
 import { findById as findUserById } from '../user/repository';
 import { emitFinanceTransactionChanged } from '../../events/domainEvents';
-
-type Actor = {
-  user_id: string;
-  role: (typeof ROLES)[number];
-};
 
 const TRANSACTION_LIST_CACHE_TTL_SECONDS = 20;
 const TRANSACTION_LIST_VERSION_TTL_SECONDS = 60 * 60;
@@ -114,7 +110,7 @@ function serializeFilters(filters: {
 function buildTransactionListCacheKey(params: {
   scope: string;
   version: number;
-  actor: Actor;
+  actor: ServiceActor;
   filters: {
     user_id?: string;
     type?: 'income' | 'expense';
@@ -155,7 +151,7 @@ async function assertActiveUser(userId: string) {
   }
 }
 
-export async function createTransaction(input: unknown, actor: Actor) {
+export async function createTransaction(input: unknown, actor: ServiceActor) {
   const data = createSchema.parse(input);
 
   const targetUserId =
@@ -194,7 +190,7 @@ export async function createTransaction(input: unknown, actor: Actor) {
   };
 }
 
-export async function listTransactions(input: unknown, actor: Actor) {
+export async function listTransactions(input: unknown, actor: ServiceActor) {
   const data = listSchema.parse(input ?? {});
 
   const filters: {

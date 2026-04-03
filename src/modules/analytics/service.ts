@@ -2,24 +2,12 @@ import { z } from 'zod';
 import { AppError } from '../../utils/errors';
 import { ROLES } from '../../utils/constants';
 import { getCache, getJSONCache, incrementCache, setJSONCache } from '../../lib/Redis';
+import {
+  AnalyticsSummaryResponse,
+  AnalyticsTrendResponse,
+  ServiceActor,
+} from '../../types';
 import * as analyticsRepository from './repository';
-
-type Actor = {
-  user_id: string;
-  role: (typeof ROLES)[number];
-};
-
-type SummaryResponse = {
-  total_income: string;
-  total_expense: string;
-  net_balance: string;
-};
-
-type TrendResponse = {
-  month: string;
-  income: string;
-  expense: string;
-};
 
 const ANALYTICS_CACHE_TTL_SECONDS = 60 * 60;
 const ANALYTICS_VERSION_TTL_SECONDS = 60 * 60;
@@ -57,7 +45,7 @@ async function getAnalyticsVersion(targetUserId?: string): Promise<number> {
   return parsed;
 }
 
-function resolveTargetUserId(actor: Actor, requestedUserId?: string): string | undefined {
+function resolveTargetUserId(actor: ServiceActor, requestedUserId?: string): string | undefined {
   if (actor.role === 'viewer') {
     if (requestedUserId && requestedUserId !== actor.user_id) {
       throw new AppError('Viewer can only access own analytics', 403);
@@ -69,20 +57,20 @@ function resolveTargetUserId(actor: Actor, requestedUserId?: string): string | u
   return requestedUserId;
 }
 
-export async function getSummary(actor: Actor, queryInput: unknown) {
+export async function getSummary(actor: ServiceActor, queryInput: unknown) {
   const data = querySchema.parse(queryInput ?? {});
   const targetUserId = resolveTargetUserId(actor, data.user_id);
 
   const version = await getAnalyticsVersion(targetUserId);
   const cacheKey = summaryCacheKey(targetUserId, version);
-  const cached = await getJSONCache<SummaryResponse>(cacheKey);
+  const cached = await getJSONCache<AnalyticsSummaryResponse>(cacheKey);
   if (cached) {
     return cached;
   }
 
   const summary = await analyticsRepository.getSummary(targetUserId);
 
-  const response: SummaryResponse = {
+  const response: AnalyticsSummaryResponse = {
     total_income: summary.total_income,
     total_expense: summary.total_expense,
     net_balance: summary.net_balance,
@@ -93,20 +81,20 @@ export async function getSummary(actor: Actor, queryInput: unknown) {
   return response;
 }
 
-export async function getTrends(actor: Actor, queryInput: unknown) {
+export async function getTrends(actor: ServiceActor, queryInput: unknown) {
   const data = querySchema.parse(queryInput ?? {});
   const targetUserId = resolveTargetUserId(actor, data.user_id);
 
   const version = await getAnalyticsVersion(targetUserId);
   const cacheKey = trendsCacheKey(targetUserId, version);
-  const cached = await getJSONCache<TrendResponse[]>(cacheKey);
+  const cached = await getJSONCache<AnalyticsTrendResponse[]>(cacheKey);
   if (cached) {
     return cached;
   }
 
   const rows = await analyticsRepository.getMonthlyTrends(targetUserId);
 
-  const response: TrendResponse[] = rows.map((row) => ({
+  const response: AnalyticsTrendResponse[] = rows.map((row) => ({
     month: row.month_key,
     income: row.income,
     expense: row.expense,

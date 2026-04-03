@@ -4,6 +4,7 @@ import { signAccessToken } from '../../config/jwt';
 import { AppError } from '../../utils/errors';
 import { ROLES } from '../../utils/constants';
 import { getJSONCache, incrementCache, setJSONCache } from '../../lib/Redis';
+import { AuthSafeUser } from '../../types';
 import { createUser, findUserByEmail, findUserById } from './repository';
 
 const AUTH_ME_CACHE_TTL_SECONDS = 120;
@@ -31,15 +32,7 @@ const loginSchema = z.object({
   password: z.string().min(1),
 });
 
-function toSafeUser(user: {
-  id: string;
-  name: string | null;
-  email: string;
-  role: (typeof ROLES)[number];
-  status: string;
-  created_at: string;
-  updated_at: string;
-}) {
+function toSafeUser(user: AuthSafeUser): AuthSafeUser {
   return {
     id: user.id,
     name: user.name,
@@ -122,7 +115,7 @@ export async function login(input: unknown) {
 
 export async function getMe(userId: string) {
   const cacheKey = authMeCacheKey(userId);
-  const cached = await getJSONCache<ReturnType<typeof toSafeUser>>(cacheKey);
+  const cached = await getJSONCache<AuthSafeUser>(cacheKey);
   if (cached) {
     return cached;
   }

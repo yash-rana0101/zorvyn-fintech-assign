@@ -3,12 +3,8 @@ import { z } from 'zod';
 import { AppError } from '../../utils/errors';
 import { DEFAULT_LIMIT, DEFAULT_PAGE, MAX_LIMIT, ROLES, USER_STATUSES } from '../../utils/constants';
 import { deleteCache, getCache, getJSONCache, incrementCache, setJSONCache } from '../../lib/Redis';
+import { ServiceActor } from '../../types';
 import * as userRepository from './repository';
-
-type Actor = {
-  user_id: string;
-  role: (typeof ROLES)[number];
-};
 
 const USER_CACHE_TTL_SECONDS = 120;
 const USER_LIST_CACHE_TTL_SECONDS = 60;
@@ -45,7 +41,7 @@ const listSchema = z.object({
 
 const userIdSchema = z.string().uuid('user id must be a valid UUID');
 
-function ensureSelfOrAdmin(actor: Actor, targetUserId: string): void {
+function ensureSelfOrAdmin(actor: ServiceActor, targetUserId: string): void {
   if (actor.role !== 'admin' && actor.user_id !== targetUserId) {
     throw new AppError('Forbidden', 403);
   }
@@ -111,7 +107,7 @@ export async function createUser(input: unknown) {
   return created;
 }
 
-export async function getUserById(userId: string, actor: Actor) {
+export async function getUserById(userId: string, actor: ServiceActor) {
   const targetUserId = userIdSchema.parse(userId);
   ensureSelfOrAdmin(actor, targetUserId);
 
@@ -131,7 +127,7 @@ export async function getUserById(userId: string, actor: Actor) {
   return user;
 }
 
-export async function updateUser(userId: string, input: unknown, actor: Actor) {
+export async function updateUser(userId: string, input: unknown, actor: ServiceActor) {
   const targetUserId = userIdSchema.parse(userId);
   ensureSelfOrAdmin(actor, targetUserId);
 
