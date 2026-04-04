@@ -34,6 +34,16 @@ export async function listTransactions(req: Request, res: Response, next: NextFu
   }
 }
 
+export async function getTransactionById(req: Request, res: Response, next: NextFunction) {
+  try {
+    const actor = (req as AuthedRequest).user;
+    const transaction = await financeService.getTransactionById(req.params.id, actor);
+    res.status(200).json({ success: true, data: transaction });
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function updateTransaction(req: Request, res: Response, next: NextFunction) {
   try {
     const transaction = await financeService.updateTransaction(req.params.id, req.body);

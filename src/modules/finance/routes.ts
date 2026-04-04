@@ -9,6 +9,7 @@ router.use(authenticate);
 
 router.post('/', authorize(['admin', 'analyst', 'viewer']), controller.createTransaction);
 router.get('/', authorize(['admin', 'analyst', 'viewer']), controller.listTransactions);
+router.get('/:id', authorize(['admin', 'analyst', 'viewer']), controller.getTransactionById);
 router.put('/:id', authorize(['admin']), controller.updateTransaction);
 router.delete('/:id', authorize(['admin']), controller.deleteTransaction);
 

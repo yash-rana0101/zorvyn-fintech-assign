@@ -258,6 +258,21 @@ export async function listTransactions(input: unknown, actor: ServiceActor) {
   return response;
 }
 
+export async function getTransactionById(id: string, actor: ServiceActor) {
+  const transactionId = transactionIdSchema.parse(id);
+  const transaction = await financeRepository.findById(transactionId);
+
+  if (!transaction) {
+    throw new AppError('Transaction not found', 404);
+  }
+
+  if (actor.role === 'viewer' && transaction.user_id !== actor.user_id) {
+    throw new AppError('Forbidden', 403);
+  }
+
+  return toPublicTransaction(transaction);
+}
+
 export async function updateTransaction(id: string, input: unknown) {
   const transactionId = transactionIdSchema.parse(id);
   const updates = updateSchema.parse(input);

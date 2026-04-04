@@ -564,6 +564,32 @@
           }
         },
         {
+          "name": "GET /transactions/:id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.test('Transaction fetch by id works', function () {",
+                  "  pm.expect(json.success).to.eql(true);",
+                  "  pm.expect(json.data.id).to.eql(pm.collectionVariables.get('transactionId'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{apiBase}}/transactions/{{transactionId}}"
+          }
+        },
+        {
           "name": "PUT /transactions/:id",
           "event": [
             {

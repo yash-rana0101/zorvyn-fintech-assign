@@ -754,6 +754,42 @@ export const openApiDocument = {
       },
     },
     '/api/v1/transactions/{id}': {
+      get: {
+        tags: ['Transactions'],
+        summary: 'Get transaction by id',
+        description: 'Viewers can only access their own transactions.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            in: 'path',
+            name: 'id',
+            required: true,
+            schema: { type: 'string', format: 'uuid' },
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'Transaction found',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['success', 'data'],
+                  properties: {
+                    success: { type: 'boolean', example: true },
+                    data: { $ref: '#/components/schemas/Transaction' },
+                  },
+                },
+              },
+            },
+          },
+          '400': { $ref: '#/components/responses/BadRequest' },
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '403': { $ref: '#/components/responses/Forbidden' },
+          '404': { $ref: '#/components/responses/NotFound' },
+          '500': { $ref: '#/components/responses/InternalServerError' },
+        },
+      },
       put: {
         tags: ['Transactions'],
         summary: 'Update transaction (admin only)',
